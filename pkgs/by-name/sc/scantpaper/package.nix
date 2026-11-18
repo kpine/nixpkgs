@@ -26,6 +26,7 @@
   xvfb,
   imagemagickBig,
   tesseract,
+  makeFontsConf,
   glibcLocales,
 }:
 
@@ -136,6 +137,9 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
 
     # Some tests exercise comma-decimal number handling in de_DE locale
     export LOCALE_ARCHIVE=${testLocales}/lib/locale/locale-archive
+
+    # Adresses test message `Fontconfig error: Cannot load default config file: File not found`
+    export FONTCONFIG_FILE=${makeFontsConf { fontDirectories = [ dejavu_fonts ]; }}
   '';
 
   makeWrapperArgs = [
