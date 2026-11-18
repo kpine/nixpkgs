@@ -18,6 +18,7 @@
   poppler-utils,
   ghostscript_headless,
   xdg-utils,
+  sane-backends,
 
   # tests
   appstream,
@@ -78,6 +79,19 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     substituteInPlace src/scantpaper/const.py \
       --replace-fail '/usr/share/doc/C/{PROG_NAME}/documentation.html' \
           '${placeholder "out"}/share/doc/scantpaper/documentation.html'
+
+    # GTK translates the .ui strings (menus, toolbar) with glibc's gettext,
+    # but scantpaper only configures Python's gettext, so tell glibc where
+    # the catalogs are as well
+    substituteInPlace src/scantpaper/app.py \
+      --replace-fail 'gettext.bindtextdomain(f"{PROG_NAME}")' \
+                     'gettext.bindtextdomain(f"{PROG_NAME}"); locale.bindtextdomain(PROG_NAME, str(pathlib.Path(__file__).parent / "locale"))'
+
+    # scantpaper looks up SANE's option names in sane-backends' catalog, but
+    # without a directory Python only searches its own prefix
+    substituteInPlace src/scantpaper/i18n.py \
+      --replace-fail 'gettext.translation("sane-backends")' \
+                     'gettext.translation("sane-backends", localedir="${sane-backends}/share/locale")'
   '';
 
   build-system = with python3.pkgs; [
@@ -104,6 +118,7 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     help2man
     installShellFiles
     pandoc
+    python3.pkgs.polib # compiles the translation catalogs in postInstall
   ];
 
   disabledTestPaths = [
@@ -160,6 +175,9 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
 
     install -Dm644 org.scantpaper.desktop.metainfo.xml -t $out/share/metainfo
 
+    # Compile and install the translations
+    python3 dev/compile_mo.py --src po/scantpaper \
+      --out $out/${python3.sitePackages}/scantpaper/locale
     # Local documentation opened by Help
     pandoc README.md -o documentation.html
     python3 dev/strip_remote_images.py documentation.html
