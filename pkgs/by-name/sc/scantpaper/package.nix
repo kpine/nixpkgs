@@ -19,6 +19,7 @@
   ghostscript_headless,
   xdg-utils,
   sane-backends,
+  adwaita-icon-theme,
 
   # tests
   appstream,
@@ -29,7 +30,6 @@
   tesseract,
   makeFontsConf,
   glibcLocales,
-  adwaita-icon-theme,
 }:
 
 let
@@ -166,6 +166,11 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     "PATH"
     ":"
     (lib.makeBinPath runtimeExecDeps)
+    # fallback to GTK's default icon theme, for sessions without one configured
+    "--suffix"
+    "XDG_DATA_DIRS"
+    ":"
+    "${adwaita-icon-theme}/share"
   ];
 
   postInstall = ''
