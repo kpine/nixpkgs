@@ -3,6 +3,9 @@
   python3,
   fetchFromGitHub,
   wrapGAppsHook4,
+  installShellFiles,
+  help2man,
+  pandoc,
 
   # libs
   gobject-introspection,
@@ -63,6 +66,11 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     # the test happy.
     substituteInPlace src/scantpaper/tests/test_conftest_helpers.py \
       --replace-fail "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" "${dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf"
+
+    # Help, --help and the man page point at a hardcoded FHS docs path
+    substituteInPlace src/scantpaper/const.py \
+      --replace-fail '/usr/share/doc/C/{PROG_NAME}/documentation.html' \
+          '${placeholder "out"}/share/doc/scantpaper/documentation.html'
   '';
 
   build-system = with python3.pkgs; [
@@ -86,6 +94,9 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     wrapGAppsHook4
     gobject-introspection
     writableTmpDirAsHomeHook
+    help2man
+    installShellFiles
+    pandoc
   ];
 
   disabledTestPaths = [
@@ -135,6 +146,20 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
       $out/share/applications/org.scantpaper.desktop
 
     install -Dm644 org.scantpaper.desktop.metainfo.xml -t $out/share/metainfo
+
+    # Local documentation opened by Help
+    pandoc README.md -o documentation.html
+    python3 dev/strip_remote_images.py documentation.html
+    install -Dm644 documentation.html screenshot.png -t $out/share/doc/scantpaper
+
+    # Generate man page
+    # Set COLUMNS to stop argparse wrapping the long nix store path in the man page
+    PYTHONPATH=$out/${python3.sitePackages}:$PYTHONPATH COLUMNS=1000 help2man \
+      --no-info \
+      --name="a GUI to produce PDFs or DjVus from scanned documents" \
+      --output=scantpaper.1 \
+      "python3 -m scantpaper.app"
+    installManPage scantpaper.1
   '';
 
   meta = {
