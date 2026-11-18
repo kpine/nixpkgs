@@ -26,6 +26,7 @@
   xvfb,
   imagemagickBig,
   tesseract,
+  glibcLocales,
 }:
 
 let
@@ -41,6 +42,11 @@ let
     poppler-utils
     xdg-utils
   ];
+
+  testLocales = glibcLocales.override {
+    allLocales = false;
+    locales = [ "de_DE.UTF-8/UTF-8" ];
+  };
 
 in
 python3.pkgs.buildPythonApplication (finalAttrs: {
@@ -122,11 +128,14 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     ]
     ++ runtimeExecDeps;
 
-  preInstallCheck = ''
+  preCheck = ''
     # Some tests exercise gtk code that expects to find the relevant gsettings schemas.
     # This is a simplified version of what wrapGAppsHook4 does. There's no good way to compose
     # that with pytestCheckHook, though.
     export XDG_DATA_DIRS=$GSETTINGS_SCHEMAS_PATH:$XDG_DATA_DIRS
+
+    # Some tests exercise comma-decimal number handling in de_DE locale
+    export LOCALE_ARCHIVE=${testLocales}/lib/locale/locale-archive
   '';
 
   makeWrapperArgs = [
